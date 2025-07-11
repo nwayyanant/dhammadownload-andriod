@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.dhammadownload.dhammadownloadandroid.activity.PdfViewerActivity"
+    android:tileMode="repeat"
+    android:background="@drawable/background_repeat">
+
+
+
+
+
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/llPdfView"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:weightSum="1"
+        android:layout_alignParentTop="true" >
+
+
+        <com.github.barteksc.pdfviewer.PDFView
+            android:id="@+id/pdfView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            />
+
+
+    </LinearLayout>
+
+    <com.dhammadownload.dhammadownloadandroid.common.IconTextView
+        android:id="@+id/txtClose"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:textSize="@dimen/text_size_large"
+        android:layout_alignTop="@+id/llPdfView"
+        android:text="@string/icon_back"
+        android:onClick="doClose"
+        />
+
+
+
+</RelativeLayout>

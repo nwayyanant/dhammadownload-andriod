@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.dhammadownload.dhammadownloadandroid.activity.AudioPlayerActivity"
+    android:tileMode="repeat"
+    android:background="@drawable/background_repeat">
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="CLOSE"
+        android:id="@+id/btnDownloadClose"
+        android:onClick="doClose"
+        android:background="@drawable/button_style"
+        android:textSize="15dp"
+        android:textColor="#FF041990"
+        android:layout_marginTop="2dp"
+        android:layout_marginLeft="2dp"
+        android:layout_marginRight="2dp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:weightSum="1"
+        android:layout_alignTop="@+id/btnDownloadClose">
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="39dp"
+            android:text="DHAMMADOWNLOAD  "
+            android:id="@+id/idTitleButton"
+            android:background="@drawable/title_logo"
+            android:textSize="20dp"
+            android:textColor="#041990"
+            android:layout_weight="0.09"
+            android:layout_marginLeft="2dp"
+            android:layout_marginRight="2dp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:layout_width="70dp"
+            android:layout_height="75dp"
+            android:id="@+id/imgViewAuthor"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/image_border" />
+
+        <TextView
+            android:layout_width="285dp"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:id="@+id/txtAuthorName"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:textAlignment="center"
+            android:textColor="@color/abc_search_url_text_pressed"
+            android:textSize="12dp" />
+
+        <View
+            android:layout_width="285dp"
+            android:layout_height="1dp"
+            android:background="@color/bright_foreground_disabled_material_light"/>
+
+        <TextView
+            android:layout_width="285dp"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:id="@+id/txtTitle"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:textAlignment="center"
+            android:textSize="12dp"
+            android:textColor="#FF041990" />
+
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#000000"
+            android:layout_marginTop="10dp" />
+
+        <SeekBar
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:id="@+id/seekBar"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:paddingBottom="16dp"
+            android:paddingTop="6dp"
+            android:progressDrawable="@drawable/seekbar_progressbar"
+            android:thumb="@drawable/icon24"/>
+
+        <LinearLayout
+
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:weightSum="1">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&lt;Current Position>"
+                android:id="@+id/textView_currentPosion"
+                android:gravity="left"
+                android:layout_below="@+id/textView_maxTime"
+                android:layout_centerHorizontal="true"
+                android:textSize="15dp"
+                android:layout_marginLeft="10dp"
+                android:textColor="@color/abc_search_url_text_pressed"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="&lt;Max Time>"
+                android:id="@+id/textView_maxTime"
+                android:layout_below="@+id/seekBar"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true"
+                android:gravity="right"
+                android:textSize="15dp"
+                android:textColor="@color/abc_search_url_text_pressed"
+                android:layout_marginRight="10dp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#000000"/>
+    </LinearLayout>
+
+
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_alignParentBottom="true" >
+
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="PLAY"
+        android:id="@+id/button_start"
+        android:onClick="doStart"
+        android:layout_weight="1"
+        android:background="@drawable/button_style"
+        android:textSize="16dp"
+        android:textColor="#FF041990"
+        android:layout_marginLeft="2dp"
+        android:layout_marginRight="2dp"
+        android:textStyle="bold" />
+
+    </LinearLayout>
+
+</RelativeLayout>

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:tileMode="repeat"
+    android:background="@drawable/background_repeat">
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:weightSum="1"
+        android:id="@+id/linearLayout">
+        <Button
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight=".50"
+            android:text="CLOSE"
+            android:id="@+id/btnDownloadClose"
+            android:background="@drawable/button_style"
+            android:textSize="15dp"
+            android:textColor="#FF041990"
+            android:layout_marginTop="2dp"
+            android:layout_marginLeft="2dp"
+            android:textStyle="bold" />
+        <Button
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight=".50"
+            android:text="DOWNLOAD"
+            android:id="@+id/btnDownloadDownload_Delete"
+            android:background="@drawable/button_style"
+            android:textSize="15dp"
+            android:textColor="#FF041990"
+            android:layout_marginLeft="2dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginRight="2dp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:weightSum="1"
+        android:id="@+id/linearLayout2"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentBottom="true">
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="39dp"
+        android:text="DHAMMADOWNLOAD"
+        android:id="@+id/idTitleButton"
+        android:background="@drawable/title_logo"
+        android:textSize="18dp"
+        android:textColor="#041990"
+        android:layout_weight="0.12"
+        android:layout_marginLeft="2dp"
+        android:layout_marginRight="2dp"
+        android:textStyle="bold" />
+        <ImageView
+            android:layout_width="70dp"
+            android:layout_height="75dp"
+            android:id="@+id/imgViewAuthor"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/image_border" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:id="@+id/txtAuthorName"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:textAlignment="center"
+            android:textColor="@color/abc_search_url_text_pressed"
+            android:textSize="12dp" />
+        <View
+            android:layout_width="285dp"
+            android:layout_height="1dp"
+            android:background="@color/bright_foreground_disabled_material_light"/>
+
+        <TextView
+            android:layout_width="285dp"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:id="@+id/txtTitle"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:textAlignment="center"
+            android:textColor="#FF041990"
+            android:textSize="12dp" />
+
+        <View
+            android:layout_width="285dp"
+            android:layout_height="1dp"
+            android:background="@color/bright_foreground_disabled_material_light"/>
+        <TextView
+            android:layout_width="285dp"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:id="@+id/Desc"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:textAlignment="center"
+            android:textColor="@color/abc_search_url_text_pressed"
+            android:textSize="12dp" />
+
+        <View
+            android:layout_width="285dp"
+            android:layout_height="1dp"
+            android:background="@color/bright_foreground_disabled_material_light"/>
+
+
+        <TextView
+            android:layout_width="285dp"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:id="@+id/txtDownloadSize"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:textAlignment="center"
+            android:textColor="@color/abc_search_url_text_pressed"
+            android:textSize="12dp" />
+
+
+        <View
+            android:layout_width="285dp"
+            android:layout_height="1dp"
+            android:background="@color/bright_foreground_disabled_material_light"/>
+
+        <TextView
+            android:layout_width="290dp"
+            android:layout_height="wrap_content"
+            android:text="Medium Text"
+            android:id="@+id/txtDownloadStatusMsg"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="30dp"
+            android:layout_weight="0.04"
+            android:textColor="#FF041990"
+            android:textSize="15dp"
+            android:textAlignment="center" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:gravity="center"
+        android:weightSum="1"
+        android:id="@+id/linearLayout3"
+        android:layout_alignParentBottom="true">
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="OPEN"
+        android:id="@+id/btnDownloadOpen"
+        android:background="@drawable/button_style"
+        android:textSize="15dp"
+        android:textColor="#FF041990"
+        android:layout_gravity="bottom"
+        android:layout_marginLeft="2dp"
+        android:layout_marginRight="2dp"
+        android:textStyle="bold" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:layout_alignParentStart="true"
+        android:id="@+id/space"
+        android:layout_below="@+id/linearLayout2" />
+    </LinearLayout>
+
+
+</RelativeLayout>
+
+
+

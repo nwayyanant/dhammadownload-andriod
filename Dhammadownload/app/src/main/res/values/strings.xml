@@ -1,0 +1,28 @@
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Dhammadownload</string>
+    <string name="EmptyListView">This list is empty. Please go to Online Tab and download items.</string>
+    <string name="title_activity_file_explorer">FileExplorer</string>
+
+    <string name="Setting">Setting</string>
+    <string name="StorageLocation">သိမ္းဆည္းရန္ေနရာ</string>
+    <string-array name="storageLocations_array">
+        <item>Internal</item>
+        <item>External SD Card</item>
+    </string-array>
+
+
+    <string name="fontPath">fonts/fonticon.otf</string>
+    <string name="icon_back"></string>
+
+    <string name="DLMediaPlayerServiceDesc">Dhammadownload Media Player Service</string>
+
+    <string name="Play">PLAY</string>
+    <string name="Pause">PAUSE</string>
+
+    <!--Notification Status Bar-->
+    <string name="cd_repeat">Repeat one or all</string>
+    <string name="cd_previous">Skip backwards</string>
+    <string name="cd_play">Play and pause</string>
+    <string name="cd_next">Skip forwards</string>
+
+</resources>

@@ -1,0 +1,65 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.dhammadownload.dhammadownloadandroid'
+    compileSdk 36
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    defaultConfig {
+        applicationId "com.dhammadownload.dhammadownloadandroid"
+        minSdkVersion 21
+        targetSdkVersion 33
+        versionCode 14
+        versionName "1.6"
+        manifestPlaceholders = [onesignal_app_id               : "a1ab7203-cbdf-4514-9640-daa5653677be",
+                                // Project number pulled from dashboard, local value is ignored.
+                                onesignal_google_project_number: "379789711831"]
+        /*Keys for Dev Environment
+        manifestPlaceholders = [onesignal_app_id: "a89bbaee-7e0d-446e-b498-2b5fceddc8da",
+                                // Project number pulled from dashboard, local value is ignored.
+                                onesignal_google_project_number: "429630539407"]
+        */
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+dependencies {
+    allprojects {
+        repositories {
+            mavenCentral()
+            maven {
+                url "https://maven.google.com"
+            }
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    //compile 'com.google.android.exoplayer:exoplayer:r2.0.0'
+
+    // OneSignal SDK
+    //compile 'com.android.support:preference-v7:24.2.1'
+    implementation 'androidx.core:core-ktx:1.16.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.onesignal:OneSignal:4.6.7'
+    implementation 'com.android.support.constraint:constraint-layout:2.0.4'
+    //compile 'com.android.support:design:24.2.1'
+    implementation 'com.android.support:design:28.0.0'
+    implementation 'androidx.annotation:annotation:1.9.1'
+    implementation 'androidx.media2:media2-player:1.3.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+}

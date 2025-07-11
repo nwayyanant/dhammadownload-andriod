@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:weightSum="1">
+
+    <LinearLayout
+        android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="40dp"
+    android:weightSum="1">
+<FrameLayout
+    android:layout_width="0dp"
+    android:layout_weight=".30"
+    android:layout_height="match_parent"
+    android:layout_gravity="left">
+    <ImageButton
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:id="@+id/imgbtnBack"
+        android:background="@drawable/left_arrow"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop="5dp"
+        android:focusableInTouchMode="false"
+        android:foreground="@drawable/left_arrow"
+        />
+
+    <ImageButton
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:id="@+id/imgbtnForward"
+        android:background="@drawable/right_arrow"
+        android:layout_marginTop="5dp"
+        android:layout_marginLeft="60dp"
+        android:foreground="@drawable/right_arrow" />
+</FrameLayout>
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_horizontal"
+            android:layout_weight=".40">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:id="@+id/txtTitle"
+                android:textAlignment="center"
+                android:textSize="18dp"
+                android:layout_marginTop="8dp"
+                android:textStyle="bold"
+                android:layout_marginLeft="10dp"
+                android:textColor="@color/colorPrimary"
+                android:gravity="center_horizontal"
+                android:text="DHAMMADOWNLOAD"
+                />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_weight=".30"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right">
+        <ImageButton
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:id="@+id/imgbtnRefresh"
+                android:background="@drawable/refresh"
+                android:layout_marginTop="5dp"
+                android:layout_marginRight="10dp"
+                android:foreground="@drawable/refresh"
+            android:layout_gravity="right"/>
+        </FrameLayout>
+        </LinearLayout>
+    <WebView
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:id="@+id/mainWebView"
+        android:layout_gravity="center_horizontal|right|top"
+        android:layout_marginLeft="5dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginRight="5dp"
+        android:layout_marginBottom="5dp"
+        android:focusableInTouchMode="true"
+        />
+
+    <ProgressBar
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/progressBar"
+        android:layout_gravity="right" />
+</LinearLayout>
+

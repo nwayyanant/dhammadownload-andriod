@@ -33,7 +33,7 @@ public class Constants {
     public static final String fileDownloadedMessageForSDCard = "ဤတရားေတာ္မွာ External SD Card ထဲတြင္ သိမ္းဆည္းထား ျပီးပါျပီ။";
     public static final String fileToDownloadedMessageForSDCard = "ဤတရားေတာ္ကို သိမ္းဆည္းလိုပါက DOWNLOAD ခလုပ္ ကို ႏွိပ္ပါ။ External SD Card ေပၚတြင္ သိမ္းဆည္းမည္။";
 
-    public static final String standardFont  = "fonts/Mk10M.ttf";
+    public static final String standardFont  = "fonts/zawgyi_one.ttf";
 
     public static final int tabLabelFontSize  = 10;
     public static final int BodyFontSize1  = 15;

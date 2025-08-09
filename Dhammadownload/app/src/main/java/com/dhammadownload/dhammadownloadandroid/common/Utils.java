@@ -27,6 +27,9 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Hashtable;
+import android.content.Context;
+import android.os.Environment;
+import java.util.Locale;
 
 /**
  * Created by zawlinaung on 9/17/16.
@@ -897,5 +900,53 @@ public class Utils {
 
     }
 
+    public static void getListFromAppPrivateDownloads(Context ctx, String[] supportedExts, ArrayList<MediaInfo> out) {
+        out.clear();
+        File root = ctx.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        if (root == null || !root.exists()) return;
+        walkAndCollectMedia(root, supportedExts, out);
+    }
+
+    private static void walkAndCollectMedia(File dir, String[] supportedExts, ArrayList<MediaInfo> out) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        for (File f : files) {
+            if (f.isDirectory()) {
+                walkAndCollectMedia(f, supportedExts, out);
+                continue;
+            }
+            if (hasSupportedExt(f, supportedExts)) {
+                MediaInfo mi = buildMediaInfoFromFile(f);
+                out.add(mi);
+            }
+        }
+    }
+
+    private static boolean hasSupportedExt(File f, String[] supportedExts) {
+        String name = f.getName().toLowerCase(Locale.ROOT);
+        for (String ext : supportedExts) {
+            // ext values in your Constants.supportedAudioFiles are like ".MP3" or "MP3"?
+            // Handle both:
+            String e = ext.toLowerCase(Locale.ROOT);
+            if (!e.startsWith(".")) e = "." + e;
+            if (name.endsWith(e)) return true;
+        }
+        return false;
+    }
+
+    private static MediaInfo buildMediaInfoFromFile(File f) {
+        MediaInfo mi = new MediaInfo();
+        // These 4 fields are used in LocalMP3Activity
+        mi.setPhysicallocation(f.getAbsolutePath());
+        mi.setFilename(f.getName());
+        // We may not have author/profile image in the app-private listing; set safe defaults.
+        mi.setAuthorname("");            // or derive from parent folder if you want
+        mi.setProfileimage("");          // optional: path to a default author image
+        // If MediaInfo has more attributes (size, date, etc.), set them here:
+        // mi.setFilesize(f.length());
+        // mi.setCreateddate(new Date(f.lastModified()));
+        return mi;
+    }
 
 }

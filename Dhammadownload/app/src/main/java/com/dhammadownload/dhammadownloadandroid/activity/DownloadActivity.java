@@ -1,21 +1,14 @@
-/*
-Download Activity to donwload MP3,MP4 and PDF etc.....
-Chnage History
---------------
-25/Sep/2016 - Initial version
- */
-
 package com.dhammadownload.dhammadownloadandroid.activity;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
@@ -23,11 +16,14 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -43,22 +39,16 @@ import com.dhammadownload.dhammadownloadandroid.entity.MediaInfo;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
-/**
- * Created by zawlinaung on 9/17/16.
- */
-@SuppressWarnings("deprecation")
-public class DownloadActivity extends Activity implements ActivityCompat.OnRequestPermissionsResultCallback {
-
-    private static final int PERMISSION_REQUEST_CAMERA = 0;
+public class DownloadActivity extends Activity {
 
     private static final String TAG = "DownloadActivity";
-
-    private Boolean isP2P=false;
 
     private MediaInfo mMediaInfo;
 
@@ -83,57 +73,53 @@ public class DownloadActivity extends Activity implements ActivityCompat.OnReque
     String authorMainConfigLocalPath = "";
     String authorMediaConfigURL = "";
     String authorMediaConfigLocalPath = "";
+
+    // App-private download path (short + safe)
     String absoluteLocalFilePath = "";
+
+    // Public Downloads entry for Android 10+
+    Uri mediaStoreUri = null;
+
+    // We’ll keep a stable, safe filename derived from URL so UI checks match before/after download
+    String desiredFileName = "";
 
     String strFileDownloadMessage = "";
     Boolean mainFileDownload = true;
     Exception downloadAsyncTaskError;
-    // Progress Dialog
     private ProgressDialog pDialog;
-    // Progress dialog type (0 - for Horizontal progress bar)
     public static final int progress_bar_type = 0;
-
 
     Typeface mmfontface;
     static DownloadFileFromURL downloadActivity;
     AlertDialog.Builder confirmDialog;
 
-
+    @Override
     public void onCreate(Bundle savedInstanceState) {
-
         Log.d(TAG, "[onCreate] Start.");
-
         try {
-
             super.onCreate(savedInstanceState);
             setContentView(R.layout.download_layout);
 
             Bundle extras = getIntent().getExtras();
             if (extras != null) {
                 downloadURL = extras.getString("downloadURL");
-                Log.d(TAG, "[onCreate] Download UR[." + downloadURL + "]");
-
-                isP2P=(extras.containsKey("isP2P"))? extras.getBoolean("isP2P"):SettingManager.getInstance().IS_PSP;
-                Log.d(TAG, "[onCreate] isP2P[." + isP2P + "]");
+                Log.d(TAG, "[onCreate] Download URL [" + downloadURL + "]");
             }
 
-            btnClose = (Button) findViewById(R.id.btnDownloadClose);
-            btnDownload_Delete = (Button) findViewById(R.id.btnDownloadDownload_Delete);
-            btnOpen = (Button) findViewById(R.id.btnDownloadOpen);
-            txtAuthorNme = (TextView) findViewById(R.id.txtAuthorName);
-            txtTitle = (TextView) findViewById(R.id.txtTitle);
-            imgAuthor = (ImageView) findViewById(R.id.imgViewAuthor);
-            txtDownloadSize = (TextView) findViewById(R.id.txtDownloadSize);
-            txtDescription = (TextView) findViewById(R.id.Desc);
-            txtDownloadStausMessage = (TextView) findViewById(R.id.txtDownloadStatusMsg);
+            btnClose = findViewById(R.id.btnDownloadClose);
+            btnDownload_Delete = findViewById(R.id.btnDownloadDownload_Delete);
+            btnOpen = findViewById(R.id.btnDownloadOpen);
+            txtAuthorNme = findViewById(R.id.txtAuthorName);
+            txtTitle = findViewById(R.id.txtTitle);
+            imgAuthor = findViewById(R.id.imgViewAuthor);
+            txtDownloadSize = findViewById(R.id.txtDownloadSize);
+            txtDescription = findViewById(R.id.Desc);
+            txtDownloadStausMessage = findViewById(R.id.txtDownloadStatusMsg);
 
             mmfontface = Typeface.createFromAsset(getAssets(), Constants.standardFont);
-            Log.d(TAG, "[onCreate] Initialization controls.");
 
-            mMediaInfo=Utils.convertToMeidaInfoFromUrl(downloadURL);
-
-            //authorName = Utils.getAuthorNameFromLocalURL(downloadURL);
-            authorName=mMediaInfo.getAuthorname();
+            mMediaInfo = Utils.convertToMeidaInfoFromUrl(downloadURL);
+            authorName = mMediaInfo.getAuthorname();
             authorRemoteURL = Utils.getMainAuthorFolder(downloadURL, authorName);
 
             txtAuthorNme.setText(authorName);
@@ -141,9 +127,7 @@ public class DownloadActivity extends Activity implements ActivityCompat.OnReque
 
             txtDescription.setTypeface(mmfontface);
             if (Utils.classifyRequestedFileType(Constants.supportedAudioFiles, downloadURL)) {
-
                 txtDescription.setText(Constants.txtAudioFileDesc);
-
             } else if (Utils.classifyRequestedFileType(Constants.supportedVideoFiles, downloadURL)) {
                 txtDescription.setText(Constants.txtVideoFileDesc);
             } else {
@@ -152,535 +136,436 @@ public class DownloadActivity extends Activity implements ActivityCompat.OnReque
 
             txtDownloadSize.setTypeface(mmfontface);
             txtDownloadSize.setText(Utils.getDownloadSize(downloadURL) + "-MB");
-
             txtDownloadStausMessage.setTypeface(mmfontface);
 
             initListenserAndDialog();
 
-            //Check for Storage Permission Granted and
-            //proceed to create Folder, download Author Image, Main Config, Media Config
-            // only when permission is granted
-            //Otherwise Request the permission
-            if(isStoragePermissionGranted()){
-                createFolderAndDownloadConfigFiles();
-            }else{
-                txtDownloadStausMessage.setText(Constants.StoragePermissionRequestMsg);
-                btnDownload_Delete.setEnabled(false);
+            // Prepare folders and small config files (app-private)
+            createFolderAndDownloadConfigFiles();
 
-                /*
-                AlertDialog.Builder errorDialog = new AlertDialog.Builder(DownloadActivity.this);
-                errorDialog
-                        .setTitle("Error")
-                        .setMessage(Constants.StoragePermissionRequestMsg)
-                        .setIcon(android.R.drawable.ic_dialog_alert)
-                        .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                            }
-                        });
-                errorDialog.show();
-                */
+            // Decide a SAFE file name up-front (from URL) and compute app-private path
+            desiredFileName = buildSafeFilename(Utils.getFileNameFromAnyURL(downloadURL));
+            File privateDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if (privateDir != null && !privateDir.exists()) privateDir.mkdirs();
+            File privateFile = new File(privateDir, desiredFileName);
+            absoluteLocalFilePath = privateFile.getAbsolutePath();
 
-
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+            // Update UI based on whether file already exists
+            File localFile = new File(absoluteLocalFilePath);
+            if (localFile.exists()) {
+                btnDownload_Delete.setText("DELETE");
+                txtDownloadStausMessage.setText(
+                        SettingManager.getInstance().getStorageLocation() == StorageLocation.DEVICE
+                                ? Constants.fileDownloadedMessage
+                                : Constants.fileDownloadedMessageForSDCard
+                );
+            } else {
+                btnDownload_Delete.setText("DOWNLOAD");
+                txtDownloadStausMessage.setText(
+                        SettingManager.getInstance().getStorageLocation() == StorageLocation.DEVICE
+                                ? Constants.fileToDownloadedMessage
+                                : Constants.fileToDownloadedMessageForSDCard
+                );
             }
-
 
         } catch (Exception e) {
             Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
-
-
             showDownloadError(e);
-
         }
         Log.d(TAG, "[onCreate] End.");
-
     }
 
     private void createFolderAndDownloadConfigFiles() {
-
-        boolean isSDCardAvailable=Utils.isSDCardAvailable();
-        if(SettingManager.getInstance().getStorageLocation()==StorageLocation.SDCARD
-                && (!isSDCardAvailable)){
-            AlertDialog.Builder msgDialog = new AlertDialog.Builder(DownloadActivity.this);
-            msgDialog
+        boolean isSDCardAvailable = Utils.isSDCardAvailable();
+        if (SettingManager.getInstance().getStorageLocation() == StorageLocation.SDCARD && (!isSDCardAvailable)) {
+            new AlertDialog.Builder(DownloadActivity.this)
                     .setTitle("Download")
                     .setMessage(Constants.SDCardNotWritableMsg)
                     .setIcon(android.R.drawable.ic_dialog_alert)
-                    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            SettingManager.getInstance().setStorageLocation(StorageLocation.SDCARD);
-                        }
-                    });
-
-            msgDialog.show();
+                    .setPositiveButton("Ok", (dialog, which) ->
+                            SettingManager.getInstance().setStorageLocation(StorageLocation.SDCARD))
+                    .show();
         }
 
         folderPath = Utils.getLocalAppFolderPathFromWebURL(downloadURL);
         Utils.createFolder(folderPath);
         Utils.createNoMediaFile();
-        Log.d(TAG, "[onCreate] Folders are created.[" + folderPath + "]");
-        //=====================================================================================
-        //download author image | main config | media info
+        Log.d(TAG, "[createFolderAndDownloadConfigFiles] Folders created [" + folderPath + "]");
 
-        //=====================================================================================
+        // Download small author/config assets into app-private cache
         authorImageURL = authorRemoteURL + "/" + authorName + Constants.authorImageExt;
-        //authorImageLocalPath = authorImageURL.replace(Constants.mainURLProcol, "");
-
-        String authorLocalFolder=Utils.getLocalAppFolderPathFromWebURL(authorImageURL);
-
-        authorImageLocalPath=authorLocalFolder + authorName + Constants.authorImageExt;
+        String authorLocalFolder = Utils.getLocalAppFolderPathFromWebURL(authorImageURL);
+        authorImageLocalPath = authorLocalFolder + authorName + Constants.authorImageExt;
         Utils.downloadFile(authorImageURL, authorImageLocalPath);
-        //=====================================================================================
 
         authorMainConfigURL = authorRemoteURL + "/" + Constants.authorMainConfigFile;
-        //authorMainConfigLocalPath = authorMainConfigURL.replace(Constants.mainURLProcol, "");
-        authorMainConfigLocalPath=authorLocalFolder  + Constants.authorMainConfigFile;
+        authorMainConfigLocalPath = authorLocalFolder + Constants.authorMainConfigFile;
         Utils.downloadFile(authorMainConfigURL, authorMainConfigLocalPath);
-        //=====================================================================================
 
         authorMediaConfigURL = authorRemoteURL + "/" + Constants.authorMediaConfig;
-        //authorMediaConfigLocalPath = authorMediaConfigURL.replace(Constants.mainURLProcol, "");
         authorMediaConfigLocalPath = authorLocalFolder + Constants.authorMediaConfig;
         Utils.downloadFile(authorMediaConfigURL, authorMediaConfigLocalPath);
-        //=====================================================================================
 
-
-        /***Update UI based on Downloaded Config File***/
+        // Update UI from configs
         File authorMainConfigFile = new File(Utils.getDocumentDirectory() + authorMainConfigLocalPath);
         if (authorMainConfigFile.exists()) {
             txtAuthorNme.setTypeface(mmfontface);
             txtAuthorNme.setText(Utils.getProfileInfo(authorMainConfigLocalPath));
-        } else {
-            Log.d(TAG, "[onCreate] File does not exist.[" + authorMainConfigLocalPath + "]");
         }
 
         File mediaInfoConfigFile = new File(Utils.getDocumentDirectory() + authorMediaConfigLocalPath);
-        String internetRemoteUrl=mMediaInfo.getInternetRemoteUrl();
+        String internetRemoteUrl = mMediaInfo.getInternetRemoteUrl();
         if (mediaInfoConfigFile.exists()) {
             txtTitle.setTypeface(mmfontface);
-            //txtTitle.setText(Utils.getMediaTitle(authorMediaConfigLocalPath, downloadURL));
             txtTitle.setText(Utils.getMediaTitle(authorMediaConfigLocalPath, internetRemoteUrl));
-        } else {
-            Log.d(TAG, "[onCreate] File does not exist.[" + authorMediaConfigLocalPath + "]");
         }
 
         File authorProfileImage = new File(Utils.getDocumentDirectory() + authorImageLocalPath);
         if (authorProfileImage.exists()) {
-
             Bitmap myBitmap = BitmapFactory.decodeFile(authorProfileImage.getAbsolutePath());
             imgAuthor.setImageBitmap(myBitmap);
-
         } else {
-            Log.d(TAG, "[onCreate] File does not exist.[" + authorImageLocalPath + "]");
             imgAuthor.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.dhammadownload_logo));
-        }
-
-        //absoluteLocalFilePath = Utils.getLocalAbosoluteFilePathWithNameFromWebRUL(downloadURL);
-        absoluteLocalFilePath = Utils.getLocalAbosoluteFilePathWithNameFromWebRUL(downloadURL);
-
-        txtDownloadStausMessage.setTypeface(mmfontface);
-
-        File localFile = new File(absoluteLocalFilePath);
-        if (localFile.exists()) {
-
-            btnDownload_Delete.setText("DELETE");
-
-            if (SettingManager.getInstance().getStorageLocation() == StorageLocation.DEVICE) {
-                txtDownloadStausMessage.setText(Constants.fileDownloadedMessage);
-            } else {
-                txtDownloadStausMessage.setText(Constants.fileDownloadedMessageForSDCard);
-            }
-
-        } else {
-
-            btnDownload_Delete.setText("DOWNLOAD");
-
-            if (SettingManager.getInstance().getStorageLocation() == StorageLocation.DEVICE) {
-                txtDownloadStausMessage.setText(Constants.fileToDownloadedMessage);
-            } else {
-                txtDownloadStausMessage.setText(Constants.fileToDownloadedMessageForSDCard);
-            }
-
         }
     }
 
     /***Initialize UI***/
-    private void initListenserAndDialog(){
-                btnClose.setOnClickListener(new View.OnClickListener()
+    private void initListenserAndDialog() {
+        btnClose.setOnClickListener(v -> finish());
 
-    {
-        public void onClick (View v){
-
-        finish();
-    }
-    });
-
-                        btnDownload_Delete.setOnClickListener(new View.OnClickListener()
-
-    {
-        public void onClick (View v){
-
-        File localFile = new File(absoluteLocalFilePath);
-        if (localFile.exists()) {
-
-            //Put up the Yes/No message box
-            confirmDialog = new AlertDialog.Builder(DownloadActivity.this);
-            confirmDialog
-                    .setTitle("Delete")
-                    .setMessage("Are you sure?")
-                    .setIcon(android.R.drawable.ic_dialog_alert)
-                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-
+        btnDownload_Delete.setOnClickListener(v -> {
+            File localFile = new File(absoluteLocalFilePath);
+            if (localFile.exists()) {
+                confirmDialog = new AlertDialog.Builder(DownloadActivity.this);
+                confirmDialog
+                        .setTitle("Delete")
+                        .setMessage("Are you sure?")
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setPositiveButton("Yes", (dialog, which) -> {
                             Utils.deleteFileFromLocal(absoluteLocalFilePath);
                             btnDownload_Delete.setText("DOWNLOAD");
                             txtDownloadStausMessage.setText(Constants.fileToDownloadedMessage);
+                            // NOTE: MediaStore copy (if any) is not auto-deleted here.
+                        })
+                        .setNegativeButton("No", null)
+                        .show();
+            } else {
+                downloadActivity = new DownloadFileFromURL();
+                mainFileDownload = true;
+                strFileDownloadMessage = "Downloading. Please wait...";
+                downloadActivity.execute(downloadURL);
+            }
+        });
 
-                        }
-                    })
-                    .setNegativeButton("No", null);
+        btnOpen.setOnClickListener(v -> {
+            File localFile = new File(absoluteLocalFilePath);
+            boolean isAudio = Utils.classifyRequestedFileType(Constants.supportedAudioFiles, downloadURL.toUpperCase(Locale.ROOT));
+            boolean isVideo = Utils.classifyRequestedFileType(Constants.supportedVideoFiles, downloadURL.toUpperCase(Locale.ROOT));
+            boolean isPdf   = Utils.classifyRequestedFileType(Constants.supportedEbookFiles, downloadURL.toUpperCase(Locale.ROOT));
 
-            confirmDialog.show();
-
-
-        } else {
-
-            downloadActivity = new DownloadFileFromURL();
-            mainFileDownload = true;
-            strFileDownloadMessage = "Downloading. Please wait...";
-            downloadActivity.execute(downloadURL);
-
-        }
-
-
-    }
-    });
-
-                        btnOpen.setOnClickListener(new View.OnClickListener()
-
-    {
-        public void onClick (View v){
-
-        ///Opening local files
-        File localFile = new File(absoluteLocalFilePath);
-        if (localFile.exists()) {
-
-            if (Utils.classifyRequestedFileType(Constants.supportedAudioFiles, downloadURL.toString().toUpperCase()) == true) {
-
-                Intent audioPlayer = new Intent(DownloadActivity.this, AudioPlayerActivity.class);
-                audioPlayer.setAction(Intent.ACTION_VIEW);
-                audioPlayer.putExtra("authorProfileImage", Utils.getDocumentDirectory() + authorImageLocalPath);
-                audioPlayer.putExtra("authorName", txtAuthorNme.getText());
-                audioPlayer.putExtra("title", txtTitle.getText());
-                audioPlayer.putExtra("openMediaFile", absoluteLocalFilePath);
-                startActivity(audioPlayer);
-
-            } else if (Utils.classifyRequestedFileType(Constants.supportedVideoFiles, downloadURL.toString().toUpperCase()) == true) {
-
-                Intent intent = new Intent();
-                intent.setAction(Intent.ACTION_VIEW);
-                intent.setDataAndType(Uri.fromFile(localFile), "video/mp4");
-                startActivity(intent);
-
-
-            } else if (Utils.classifyRequestedFileType(Constants.supportedEbookFiles, downloadURL.toString().toUpperCase()) == true) {
-
-
-                try {
-//                    Intent intent = new Intent();
-//                    intent.setAction(Intent.ACTION_VIEW);
-//                    intent.setDataAndType(Uri.parse("file://" + absoluteLocalFilePath), "application/pdf");
-//                    startActivity(intent);
-
+            if (localFile.exists()) {
+                if (isAudio) {
+                    Intent audioPlayer = new Intent(DownloadActivity.this, AudioPlayerActivity.class);
+                    audioPlayer.setAction(Intent.ACTION_VIEW);
+                    audioPlayer.putExtra("authorProfileImage", Utils.getDocumentDirectory() + authorImageLocalPath);
+                    audioPlayer.putExtra("authorName", txtAuthorNme.getText());
+                    audioPlayer.putExtra("title", txtTitle.getText());
+                    audioPlayer.putExtra("openMediaFile", absoluteLocalFilePath);
+                    startActivity(audioPlayer);
+                } else if (isVideo) {
+                    try {
+                        File openMediaFile = new File(absoluteLocalFilePath);
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        Uri uri = FileProvider.getUriForFile(
+                                DownloadActivity.this,
+                                getApplicationContext().getPackageName() + ".provider",
+                                openMediaFile
+                        );
+                        intent.setDataAndType(uri, "video/mp4");
+                        startActivity(intent);
+                    } catch (ActivityNotFoundException ae) {
+                        Toast.makeText(DownloadActivity.this,
+                                "No video player App installed. Please install a video player.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                } else if (isPdf) {
                     Intent pdfViewer = new Intent(DownloadActivity.this, PdfViewerActivity.class);
                     pdfViewer.setAction(Intent.ACTION_VIEW);
                     pdfViewer.putExtra("openMediaFile", absoluteLocalFilePath);
                     startActivity(pdfViewer);
-
-                } catch (ActivityNotFoundException e) {
-                    Toast.makeText(DownloadActivity.this, "No PDF Viewer Installed", Toast.LENGTH_LONG).show();
                 }
-
-            }
-
-
-        } else {
-
-            ///Opening online files
-            if (Utils.classifyRequestedFileType(Constants.supportedAudioFiles, downloadURL.toString().toUpperCase()) == true) {
-
-                Intent audioPlayer = new Intent(DownloadActivity.this, AudioPlayerActivity.class);
-                audioPlayer.setAction(Intent.ACTION_VIEW);
-                audioPlayer.putExtra("authorProfileImage", Utils.getDocumentDirectory() + authorImageLocalPath);
-                audioPlayer.putExtra("authorName", txtAuthorNme.getText());
-                audioPlayer.putExtra("title", txtTitle.getText());
-                audioPlayer.putExtra("openMediaFile", downloadURL);
-                startActivity(audioPlayer);
-
-            } else if (Utils.classifyRequestedFileType(Constants.supportedVideoFiles, downloadURL.toString().toUpperCase()) == true) {
-
-                try{
-                Intent intent = new Intent();
-                intent.setAction(Intent.ACTION_VIEW);
-                intent.setDataAndType(Uri.parse(downloadURL), "video/mp4");
-                startActivity(intent);
-                }catch(ActivityNotFoundException ae){
-                    String errorMsg="No video player App installed. Please install App that can play video. \n" +
-                            absoluteLocalFilePath +
-                            "\n" + ae.getMessage();
-                    Toast.makeText(DownloadActivity.this, errorMsg,Toast.LENGTH_LONG).show();
-                    Log.e(TAG,errorMsg,ae);
-                }
-
-            } else if (Utils.classifyRequestedFileType(Constants.supportedEbookFiles, downloadURL.toString().toUpperCase()) == true) {
-
-                try {
+            } else {
+                // Open online
+                if (isAudio) {
+                    Intent audioPlayer = new Intent(DownloadActivity.this, AudioPlayerActivity.class);
+                    audioPlayer.setAction(Intent.ACTION_VIEW);
+                    audioPlayer.putExtra("authorProfileImage", Utils.getDocumentDirectory() + authorImageLocalPath);
+                    audioPlayer.putExtra("authorName", txtAuthorNme.getText());
+                    audioPlayer.putExtra("title", txtTitle.getText());
+                    audioPlayer.putExtra("openMediaFile", downloadURL);
+                    startActivity(audioPlayer);
+                } else if (isVideo) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setDataAndType(Uri.parse(downloadURL), "video/mp4");
+                        startActivity(intent);
+                    } catch (ActivityNotFoundException ae) {
+                        Toast.makeText(DownloadActivity.this,
+                                "No video player App installed. Please install a video player.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                } else if (isPdf) {
                     strFileDownloadMessage = "Loading file. Please wait...";
                     mainFileDownload = false;
                     downloadActivity = new DownloadFileFromURL();
                     downloadActivity.execute(downloadURL);
-
-                } catch (ActivityNotFoundException e) {
-                    Toast.makeText(DownloadActivity.this, "No PDF Viewer Installed. Please install.", Toast.LENGTH_LONG).show();
                 }
-
-
             }
+        });
 
-        }
-    }
-    });
-
-    pDialog =new
-
-    ProgressDialog(this);
-                        pDialog.setButton(ProgressDialog.BUTTON_NEGATIVE,"Cancel",new DialogInterface.OnClickListener()
-
-    {
-
-        @Override
-        public void onClick (DialogInterface dialog,int which){
-
-
-        downloadActivity.cancel(true);
-
-        File downloadFile = new File(absoluteLocalFilePath);
-        if (downloadFile.exists()) {
-            downloadFile.delete();
-        }
-        pDialog.cancel();
-    }
-    });
-
-}
-
-                /**
-                 * Showing Dialog
-                 * */
-                @Override
-                protected Dialog onCreateDialog(int id) {
-                    switch (id) {
-                        case progress_bar_type: // we set this to 0
-                            pDialog.setMessage(strFileDownloadMessage);
-                            pDialog.setIndeterminate(false);
-                            pDialog.setMax(100);
-                            pDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-                            pDialog.setCancelable(false);
-                            pDialog.show();
-                            return pDialog;
-                        default:
-                            return null;
-                    }
+        pDialog = new ProgressDialog(this);
+        pDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, "Cancel", (dialog, which) -> {
+            if (downloadActivity != null) downloadActivity.cancel(true);
+            File downloadFile = new File(absoluteLocalFilePath);
+            if (downloadFile.exists()) {
+                downloadFile.delete();
+            }
+            pDialog.cancel();
+        });
     }
 
-    private void showDownloadError(Exception downloadException){
-        if(downloadException!=null){
-            AlertDialog.Builder errorDialog = new AlertDialog.Builder(DownloadActivity.this);
-            errorDialog
-                    .setTitle("Error")
-                    .setMessage("Unexpected Error Occur. \n" + "Error Details: " + downloadAsyncTaskError.getMessage())
-                    .setIcon(android.R.drawable.ic_dialog_alert)
-                    .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-
-                            txtDownloadStausMessage.setText(Constants.DownloadErrorMsg);
-                            btnDownload_Delete.setEnabled(false);
-                            btnOpen.setEnabled(false);
-
-                        }
-                    });
-
-            errorDialog.show();
-        }
-    }
-
-    /***Permission Requesting Code***/
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                                           int[] grantResults) {
-        // BEGIN_INCLUDE(onRequestPermissionsResult)
-        if (requestCode == PERMISSION_REQUEST_CAMERA) {
-            // Request for camera permission.
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission has been granted. Start camera preview Activity.
-                /*
-                Snackbar.make(mLayout, "Camera permission was granted. Starting preview.",
-                        Snackbar.LENGTH_SHORT)
-                        .show();
-                startCamera();
-                */
-                btnDownload_Delete.setEnabled(true);
-
-                createFolderAndDownloadConfigFiles();
-
-            } else {
-                // Permission request was denied.
-                /*
-                Snackbar.make(mLayout, "Camera permission request was denied.",
-                        Snackbar.LENGTH_SHORT)
-                        .show();
-                */
-                txtDownloadStausMessage.setText(Constants.StoragePermissionRequestMsg);
-                btnDownload_Delete.setEnabled(false);
-            }
+    protected Dialog onCreateDialog(int id) {
+        if (id == progress_bar_type) {
+            pDialog.setMessage(strFileDownloadMessage);
+            pDialog.setIndeterminate(false);
+            pDialog.setMax(100);
+            pDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            pDialog.setCancelable(false);
+            pDialog.show();
+            return pDialog;
         }
-        // END_INCLUDE(onRequestPermissionsResult)
+        return null;
     }
 
-    private  boolean isStoragePermissionGranted() {
-        if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_GRANTED) {
-                Log.v(TAG,"Permission is granted");
-                return true;
-            } else {
-
-                Log.v(TAG,"Permission is revoked");
-                return false;
-            }
-        }
-        else { //permission is automatically granted on sdk<23 upon installation
-            Log.v(TAG,"Permission is granted");
-            return true;
+    private void showDownloadError(Exception downloadException) {
+        if (downloadException != null) {
+            new AlertDialog.Builder(DownloadActivity.this)
+                    .setTitle("Error")
+                    .setMessage("Unexpected Error Occurred.\nDetails: " + downloadException.getMessage())
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setPositiveButton("Ok", (dialog, which) -> {
+                        txtDownloadStausMessage.setText(Constants.DownloadErrorMsg);
+                        btnDownload_Delete.setEnabled(false);
+                        btnOpen.setEnabled(false);
+                    })
+                    .show();
         }
     }
 
+    // ---------- MediaStore helpers ----------
+    private Uri createMediaStoreItem(String displayName, String mime) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null;
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Downloads.DISPLAY_NAME, displayName);
+        if (!TextUtils.isEmpty(mime)) values.put(MediaStore.Downloads.MIME_TYPE, mime);
+        values.put(MediaStore.Downloads.IS_PENDING, 1);
+        ContentResolver resolver = getContentResolver();
+        Uri collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+        return resolver.insert(collection, values);
+    }
 
+    private void finalizeMediaStoreItem(Uri uri) {
+        if (uri == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Downloads.IS_PENDING, 0);
+        getContentResolver().update(uri, values, null, null);
+    }
+
+    // ---------- Filename safety helpers ----------
+    private static final int MAX_FILENAME_BYTES = 120; // conservative vs 255 max
+
+    private String getExtension(String name) {
+        int i = name.lastIndexOf('.');
+        if (i > 0 && i < name.length() - 1) return name.substring(i);
+        return "";
+    }
+
+    private String sanitizeBase(String s) {
+        String cleaned = s.replaceAll("[/\\\\:*?\"<>|\\p{Cntrl}]+", " ").trim();
+        cleaned = cleaned.replaceAll("\\s{2,}", " ");
+        if (cleaned.length() > 200) cleaned = cleaned.substring(0, 200);
+        return cleaned;
+    }
+
+    private String truncateUtf8ToBytes(String base, int maxBytes) {
+        byte[] bytes = base.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length <= maxBytes) return base;
+
+        int hi = base.length();
+        int lo = 0;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            byte[] b = base.substring(0, mid).getBytes(StandardCharsets.UTF_8);
+            if (b.length <= maxBytes) lo = mid + 1;
+            else hi = mid;
+        }
+        int cut = Math.max(1, lo - 1);
+        return base.substring(0, cut);
+    }
+
+    private String buildSafeFilename(String desiredName) {
+        if (TextUtils.isEmpty(desiredName)) desiredName = "downloaded_file";
+        String ext = getExtension(desiredName);
+        String base = sanitizeBase(ext.isEmpty()
+                ? desiredName
+                : desiredName.substring(0, desiredName.length() - ext.length()));
+        int budget = Math.max(16, MAX_FILENAME_BYTES - ext.getBytes(StandardCharsets.UTF_8).length);
+        base = truncateUtf8ToBytes(base, budget);
+        if (base.isEmpty()) base = "file";
+        return base + ext;
+    }
+
+    private String guessMimeType(String fileName) {
+        String ext = "";
+        int idx = fileName.lastIndexOf('.');
+        if (idx >= 0 && idx < fileName.length() - 1) ext = fileName.substring(idx + 1).toLowerCase(Locale.ROOT);
+        String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+        if (mime == null) {
+            if ("mp3".equals(ext)) return "audio/mpeg";
+            if ("mp4".equals(ext)) return "video/mp4";
+            if ("pdf".equals(ext)) return "application/pdf";
+            return "application/octet-stream";
+        }
+        return mime;
+    }
+
+    // ---------- File copy helper (for temp PDF etc.) ----------
+    private void copyFile(File src, File dst) throws Exception {
+        try (InputStream in = new java.io.FileInputStream(src);
+             OutputStream out = new java.io.FileOutputStream(dst)) {
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+            out.flush();
+        }
+    }
 
     /**
      * Background Async Task to download file
-     * */
+     * - Writes to app-private Downloads (short safe path)
+     * - On Android 10+ also writes to MediaStore (public Downloads)
+     */
     class DownloadFileFromURL extends AsyncTask<String, String, String> {
 
-        /**
-         * Before starting background thread
-         * Show Progress Bar Dialog
-         * */
-        @Override
-        protected void onPreExecute() {
+        @Override protected void onPreExecute() {
             super.onPreExecute();
             showDialog(progress_bar_type);
         }
 
-        /**
-         * Downloading file in background thread
-         * */
         @Override
         protected String doInBackground(String... f_url) {
-
-            Log.d(TAG,"[doInBackground] Start.");
+            Log.d(TAG, "[doInBackground] Start.");
             int count;
+            InputStream input = null;
+            OutputStream mediaStoreOut = null;
+            OutputStream privateOut = null;
+
             try {
-                downloadAsyncTaskError=null;//Set to no Error at beginning
+                downloadAsyncTaskError = null;
 
+                // Always use the same safe filename we computed from URL so UI state is consistent
+                String fileName = TextUtils.isEmpty(desiredFileName)
+                        ? buildSafeFilename(Utils.getFileNameFromAnyURL(f_url[0]))
+                        : desiredFileName;
+                String mimeType = guessMimeType(fileName);
+
+                // App-private mirror file
+                File privateDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if (privateDir != null && !privateDir.exists()) privateDir.mkdirs();
+                File privateFile = new File(privateDir, fileName);
+                absoluteLocalFilePath = privateFile.getAbsolutePath();
+                privateOut = new FileOutputStream(privateFile);
+
+                // MediaStore (public) on Android 10+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    mediaStoreUri = createMediaStoreItem(fileName, mimeType);
+                    if (mediaStoreUri != null) {
+                        mediaStoreOut = getContentResolver().openOutputStream(mediaStoreUri, "w");
+                    }
+                }
+
+                // Network
                 URL url = new URL(f_url[0]);
-                URLConnection conection = url.openConnection();
-                conection.connect();
-                // this will be useful so that you can show a tipical 0-100% progress bar
-                int lenghtOfFile = conection.getContentLength();
-                Log.d(TAG,"[doInBackground--- Log.d(TAG,\"[lenghtOfFile] Start.\");] " + lenghtOfFile);
+                URLConnection connection = url.openConnection();
+                connection.connect();
+                int lengthOfFile = connection.getContentLength();
 
-                // download the file
-                InputStream input = new BufferedInputStream(url.openStream(), 8192);
-
-                // Output stream
-                OutputStream output = new FileOutputStream(absoluteLocalFilePath);
-
-                byte data[] = new byte[1024];
-
+                input = new BufferedInputStream(url.openStream(), 8192);
+                byte[] data = new byte[8192];
                 long total = 0;
 
-                while ((count = input.read(data)) != -1) {
+                while (!isCancelled() && (count = input.read(data)) != -1) {
                     total += count;
-                    // publishing the progress....
-                    // After this onProgressUpdate will be called
-                    publishProgress(""+(int)((total*100)/lenghtOfFile));
-
-                    // writing data to file
-                    output.write(data, 0, count);
-
+                    if (lengthOfFile > 0) {
+                        publishProgress("" + (int) ((total * 100) / lengthOfFile));
+                    }
+                    privateOut.write(data, 0, count);
+                    if (mediaStoreOut != null) mediaStoreOut.write(data, 0, count);
                 }
-                //conection = null;
-                // flushing output
-                output.flush();
 
-                // closing streams
-                output.close();
-                input.close();
+                if (isCancelled()) throw new InterruptedException("Download canceled");
 
-                File downloadedFile = new File(absoluteLocalFilePath);
-                if (downloadedFile.exists()){
-                downloadedFile.length();
-
-                    Log.d(TAG,"[doInBackground--- Log.d(TAG,\"[downloadedFile].\");] " + downloadedFile.length());
-                }
+                privateOut.flush();
+                if (mediaStoreOut != null) mediaStoreOut.flush();
 
             } catch (Exception e) {
-
-                mainFileDownload=false;
-                downloadAsyncTaskError=e;
-
-                Log.e(TAG, "Exception: "+ Log.getStackTraceString(e));
-                File downloadedFile = new File("absoluteLocalFilePath");
-                if (downloadedFile.exists()){
-                    downloadedFile.delete();
+                mainFileDownload = false;
+                downloadAsyncTaskError = e;
+                Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
+                try { new File(absoluteLocalFilePath).delete(); } catch (Throwable ignore) {}
+                if (mediaStoreUri != null) {
+                    try { getContentResolver().delete(mediaStoreUri, null, null); } catch (Throwable ignore) {}
+                    mediaStoreUri = null;
                 }
+            } finally {
+                try { if (input != null) input.close(); } catch (Throwable ignore) {}
+                try { if (privateOut != null) privateOut.close(); } catch (Throwable ignore) {}
+                try { if (mediaStoreOut != null) mediaStoreOut.close(); } catch (Throwable ignore) {}
             }
 
-            Log.d(TAG,"[doInBackground] End.");
+            Log.d(TAG, "[doInBackground] End.");
             return null;
         }
 
-        /**
-         * Updating progress bar
-         * */
+        @Override
         protected void onProgressUpdate(String... progress) {
-            // setting progress percentage
             pDialog.setProgress(Integer.parseInt(progress[0]));
         }
 
-        /**
-         * After completing background task
-         * Dismiss the progress dialog
-         * **/
         @Override
         protected void onPostExecute(String file_url) {
-
-            Log.d(TAG,"[onPostExecute] Start.");
-            try{
-
-                // dismiss the dialog after the file was downloaded
+            Log.d(TAG, "[onPostExecute] Start.");
+            try {
                 dismissDialog(progress_bar_type);
-
                 showDownloadError(downloadAsyncTaskError);
 
-                if(mainFileDownload == true){
+                if (mediaStoreUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    finalizeMediaStoreItem(mediaStoreUri);
+                }
 
+                if (mainFileDownload) {
                     btnDownload_Delete.setText("DELETE");
                     txtDownloadStausMessage.setText(Constants.fileDownloadedMessage);
 
-                    if(Utils.classifyRequestedFileType(Constants.supportedAudioFiles,downloadURL.toString().toUpperCase())==true){
+                    boolean isAudio = Utils.classifyRequestedFileType(Constants.supportedAudioFiles, downloadURL.toUpperCase(Locale.ROOT));
+                    boolean isVideo = Utils.classifyRequestedFileType(Constants.supportedVideoFiles, downloadURL.toUpperCase(Locale.ROOT));
+                    boolean isPdf   = Utils.classifyRequestedFileType(Constants.supportedEbookFiles, downloadURL.toUpperCase(Locale.ROOT));
 
+                    if (isAudio) {
                         Intent audioPlayer = new Intent(DownloadActivity.this, AudioPlayerActivity.class);
                         audioPlayer.setAction(Intent.ACTION_VIEW);
                         audioPlayer.putExtra("authorProfileImage", Utils.getDocumentDirectory() + authorImageLocalPath);
@@ -688,124 +573,74 @@ public class DownloadActivity extends Activity implements ActivityCompat.OnReque
                         audioPlayer.putExtra("title", txtTitle.getText());
                         audioPlayer.putExtra("openMediaFile", absoluteLocalFilePath);
                         startActivity(audioPlayer);
-
-                    }
-
-                    else if(Utils.classifyRequestedFileType(Constants.supportedVideoFiles,downloadURL.toString().toUpperCase())==true){
-
-//                        Intent intent = new Intent();
-//                        intent.setAction(Intent.ACTION_VIEW);
-//                        intent.setDataAndType(Uri.fromFile(new File(absoluteLocalFilePath)),"video/mp4");
-//                        startActivity(intent);
-
+                    } else if (isVideo) {
                         try {
-                            File openMediaFile=new File(absoluteLocalFilePath);
-                            Intent intent = new Intent();
-                            intent.setAction(Intent.ACTION_VIEW);
+                            File openMediaFile = new File(absoluteLocalFilePath);
+                            Intent intent = new Intent(Intent.ACTION_VIEW);
                             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            Uri uri = FileProvider.getUriForFile(DownloadActivity.this, DownloadActivity.this.getApplicationContext().getPackageName() + ".provider", openMediaFile);
+                            Uri uri = FileProvider.getUriForFile(
+                                    DownloadActivity.this,
+                                    getApplicationContext().getPackageName() + ".provider",
+                                    openMediaFile
+                            );
                             intent.setDataAndType(uri, "video/mp4");
                             startActivity(intent);
-                        }catch(ActivityNotFoundException ae){
-                            String errorMsg="No video player App installed. Please install App that can play video." +
-                                    absoluteLocalFilePath +
-                                    "\n" + ae.getMessage();
-                            Toast.makeText(DownloadActivity.this, errorMsg,Toast.LENGTH_LONG).show();
-                            Log.e(TAG,errorMsg,ae);
+                        } catch (ActivityNotFoundException ae) {
+                            Toast.makeText(DownloadActivity.this,
+                                    "No video player App installed. Please install a video player.",
+                                    Toast.LENGTH_LONG).show();
                         }
-
-
-                    } else if(Utils.classifyRequestedFileType(Constants.supportedEbookFiles,downloadURL.toString().toUpperCase())==true){
-
-
-
-//                        try
-//                        {
-//                            Intent intent = new Intent();
-//                            intent.setAction(Intent.ACTION_VIEW);
-//                            intent.setDataAndType(Uri.parse("file://" + absoluteLocalFilePath),"application/pdf");
-//                            startActivity(intent);
-//
-//                        }
-//                        catch (ActivityNotFoundException e)
-//                        {
-//                            Toast.makeText(DownloadActivity.this, "No PDF Viewer Installed", Toast.LENGTH_LONG).show();
-//                        }
-
+                    } else if (isPdf) {
                         Intent pdfViewer = new Intent(DownloadActivity.this, PdfViewerActivity.class);
                         pdfViewer.setAction(Intent.ACTION_VIEW);
                         pdfViewer.putExtra("openMediaFile", absoluteLocalFilePath);
                         startActivity(pdfViewer);
-
                     }
-
-
-
-                }else{
+                } else {
                     openOnlinePdf();
                 }
 
-                if (downloadActivity != null){
-                    downloadActivity = null;
-                }
+                if (downloadActivity != null) downloadActivity = null;
 
             } catch (Exception e) {
-                Log.e(TAG, "Exception: "+ Log.getStackTraceString(e));
+                Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
             }
-
-            Log.d(TAG,"[onPostExecute] End.");
+            Log.d(TAG, "[onPostExecute] End.");
         }
 
         @Override
-        protected void onCancelled(){
-
+        protected void onCancelled() {
             super.onCancelled();
-            downloadActivity.cancel(true);
-
+            if (downloadActivity != null) downloadActivity.cancel(true);
+            if (mediaStoreUri != null) {
+                try { getContentResolver().delete(mediaStoreUri, null, null); } catch (Throwable ignore) {}
+                mediaStoreUri = null;
+            }
         }
-
-
-
-
     }
 
-    public void openOnlinePdf(){
+    public void openOnlinePdf() {
+        try {
+            Log.d(TAG, "[openOnlinePdf] Start.");
 
-        try{
-
-            Log.d(TAG,"[openOnlinePdf] Start.");
-
-            String tempPdfFile = Utils.getPDFTempFile();
-            File tempFile = new File(tempPdfFile);
+            String tempPdfPath = Utils.getPDFTempFile();
+            File tempFile = new File(tempPdfPath);
             File downloadedFile = new File(absoluteLocalFilePath);
 
-            if (tempFile.exists()){
-
-                tempFile.delete();
-            }
-            if (downloadedFile.exists()){
-
-                downloadedFile.renameTo(tempFile);
-//                Intent intent = new Intent();
-//                intent.setAction(Intent.ACTION_VIEW);
-//                intent.setDataAndType(Uri.parse("file://" + tempFile),"application/pdf");
-//                startActivity(intent);
+            if (tempFile.exists()) tempFile.delete();
+            if (downloadedFile.exists()) {
+                // Safe copy instead of renameTo (works across volumes / scoped storage)
+                copyFile(downloadedFile, tempFile);
 
                 Intent pdfViewer = new Intent(this, PdfViewerActivity.class);
                 pdfViewer.setAction(Intent.ACTION_VIEW);
                 pdfViewer.putExtra("openMediaFile", tempFile.getPath());
                 startActivity(pdfViewer);
-
-            }
-
-            if(downloadedFile!=null){
-                downloadedFile=null;
             }
 
         } catch (Exception e) {
-            Log.e(TAG, "Exception: "+ Log.getStackTraceString(e));
+            Log.e(TAG, "Exception: " + Log.getStackTraceString(e));
         }
-        Log.d(TAG,"[openOnlinePdf] End.");
+        Log.d(TAG, "[openOnlinePdf] End.");
     }
-
 }
